@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# 인증 정보가 포함된 설정 파일 (Web.config.example을 복사하여 사용)
+KollusSampleDotnet/Web.config
+# 로그 파일
+KollusSampleDotnet/logs/

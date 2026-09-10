@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Web.config.example — 이 파일을 Web.config로 복사한 후 실제 값으로 교체하세요.
+  Web.config는 .gitignore에 의해 버전 관리에서 제외됩니다.
+-->
+<configuration>
+  <appSettings>
+    <add key="webpages:Version" value="3.0.0.0" />
+    <add key="webpages:Enabled" value="false" />
+    <add key="ClientValidationEnabled" value="true" />
+    <add key="UnobtrusiveJavaScriptEnabled" value="true" />
+
+    <!-- Kollus 기본 설정 -->
+    <add key="Kollus.SecurityKey"     value="YOUR_SECURITY_KEY"/>
+    <add key="Kollus.CustomKey"       value="YOUR_CUSTOM_KEY"/>
+    <add key="Kollus.MediaContentKey" value="YOUR_MCK"/>
+
+    <!-- Kollus Upload API -->
+    <add key="Kollus.ApiAccessToken" value="YOUR_API_ACCESS_TOKEN"/>
+    <add key="Kollus.CategoryKey"    value="YOUR_CATEGORY_KEY"/>
+
+    <!-- Multi DRM (DoveRunner) -->
+    <add key="Kollus.DoveRunner.SiteKey"   value="YOUR_DOVE_RUNNER_SITE_KEY"/>
+    <add key="Kollus.DoveRunner.AccessKey" value="YOUR_DOVE_RUNNER_ACCESS_KEY"/>
+
+    <!-- Multi DRM 샘플 기본값 -->
+    <add key="Kollus.MultiDrm.SecurityKey"     value="YOUR_MULTIDRM_SECURITY_KEY"/>
+    <add key="Kollus.MultiDrm.CustomKey"       value="YOUR_MULTIDRM_CUSTOM_KEY"/>
+    <add key="Kollus.MultiDrm.MediaContentKey" value="YOUR_MULTIDRM_MCK"/>
+    <add key="Kollus.MultiDrm.SiteId"          value="YOUR_SITE_ID"/>
+    <add key="Kollus.MultiDrm.UploadFileKey"   value="YOUR_UPLOAD_FILE_KEY"/>
+  </appSettings>
+  <system.web>
+    <compilation debug="true" targetFramework="4.8" />
+    <httpRuntime targetFramework="4.8" />
+  </system.web>
+</configuration>

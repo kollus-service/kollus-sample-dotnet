@@ -1,0 +1,226 @@
+@{
+    ViewBag.Title = "Multi DRM Sample";
+}
+
+<div style="max-width:720px; margin:50px auto;">
+    <h2>Multi DRM Sample</h2>
+
+    <!-- Basic Settings -->
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>Basic Settings</strong></div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Secret Key</label>
+                        <input id="secretKey" type="text" class="form-control" value="@ViewBag.DefaultSecretKey" />
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Custom Key</label>
+                        <input id="customKey" type="text" class="form-control" value="@ViewBag.DefaultCustomKey" />
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>MCK (Media Content Key)</label>
+                        <input id="mckey" type="text" class="form-control" value="@ViewBag.DefaultMck" placeholder="e.g. NNHk8cm6" />
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>CUID (Viewer ID)</label>
+                        <input id="cuid" type="text" class="form-control" value="sample_user" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DRM Settings -->
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>DRM Settings</strong></div>
+        <div class="panel-body">
+
+            <div class="form-group">
+                <label>Streaming Type</label>
+                <select id="streamingType" class="form-control" onchange="onStreamingTypeChange()">
+                    <option value="dash">DASH &mdash; Widevine / PlayReady (Android, Chrome, Edge)</option>
+                    <option value="hls">HLS &mdash; FairPlay (Safari, iOS, iPadOS)</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>DoveRunner Site ID</label>
+                        <input id="siteId" type="text" class="form-control" value="@ViewBag.DefaultSiteId" placeholder="e.g. ABCD" />
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Upload File Key <small class="text-muted">(Content ID)</small></label>
+                        <input id="uploadFileKey" type="text" class="form-control" value="@ViewBag.DefaultUploadFileKey" placeholder="e.g. abc123..." />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>License Token <small class="text-muted">(Base64 &mdash; auto-generated below)</small></label>
+                <div class="input-group">
+                    <input id="licenseToken" type="text" class="form-control" placeholder="Click Generate to fill automatically" />
+                    <span class="input-group-btn">
+                        <button class="btn btn-default" type="button" onclick="generateLicenseToken()">Generate</button>
+                    </span>
+                </div>
+                <p class="help-block" style="font-size:12px;">
+                    Uses Site ID + Upload File Key to call <code>/MultiDrm/GenerateLicenseToken</code>.
+                    Or paste a token manually.
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <button id="playBtn" onclick="generateAndPlay()" class="btn btn-primary btn-block">Generate &amp; Play</button>
+
+    <div id="errorMsg" class="alert alert-danger" style="display:none; margin-top:12px;"></div>
+
+    <!-- Player -->
+    <div id="playerSection" style="display:none; margin-top:20px;">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Web Player</strong></div>
+            <div class="panel-body" style="padding:0;">
+                <div style="position:relative; width:100%; padding-top:56.25%;">
+                    <iframe id="drmIframe" src="about:blank"
+                        style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
+                        allowfullscreen
+                        allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Play URL</strong></div>
+            <div class="panel-body">
+                <a id="playUrlDisplay" href="#" target="_blank" style="word-break:break-all; font-size:11px;"></a>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>DRM Info</strong></div>
+            <div class="panel-body" style="font-size:12px; color:#555;">
+                <table class="table table-condensed" style="margin:0;">
+                    <tr><th style="width:160px;">Type</th><td id="infoType"></td></tr>
+                    <tr><th>License Server</th><td><code>https://drm-license.doverunner.com/ri/licenseManager.do</code></td></tr>
+                    <tr id="certRow" style="display:none;"><th>Certificate URL</th><td id="infoCertUrl" style="word-break:break-all;"></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function onStreamingTypeChange() {
+    // no UI change needed currently; cert URL is shown in result panel
+}
+
+async function generateLicenseToken() {
+    var siteId = document.getElementById('siteId').value.trim();
+    var uploadFileKey = document.getElementById('uploadFileKey').value.trim();
+    if (!siteId || !uploadFileKey) {
+        alert('Please enter Site ID and Upload File Key first.');
+        return;
+    }
+    try {
+        var streamingType = document.getElementById('streamingType').value;
+        var res = await fetch('/MultiDrm/GenerateLicenseToken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'siteId=' + encodeURIComponent(siteId)
+                + '&uploadFileKey=' + encodeURIComponent(uploadFileKey)
+                + '&streamingType=' + encodeURIComponent(streamingType)
+        });
+        var data = await res.json();
+        if (data.success) {
+            document.getElementById('licenseToken').value = data.license_token;
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function generateAndPlay() {
+    var mckey = document.getElementById('mckey').value.trim();
+    var siteId = document.getElementById('siteId').value.trim();
+    var licenseToken = document.getElementById('licenseToken').value.trim();
+    var streamingType = document.getElementById('streamingType').value;
+
+    if (!mckey) { showError('Please enter an MCK.'); return; }
+    if (!siteId) { showError('Please enter a DoveRunner Site ID.'); return; }
+    if (!licenseToken) { showError('Please generate or enter a License Token.'); return; }
+
+    document.getElementById('errorMsg').style.display = 'none';
+    document.getElementById('playerSection').style.display = 'none';
+
+    var btn = document.getElementById('playBtn');
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+
+    try {
+        var body = {
+            ClientUserId:    document.getElementById('cuid').value.trim() || 'sample_user',
+            MediaContentKey: mckey,
+            SiteId:          siteId,
+            UploadFileKey:   document.getElementById('uploadFileKey').value.trim(),
+            LicenseToken:    licenseToken,
+            StreamingType:   streamingType
+        };
+
+        var res = await fetch('/MultiDrm/GeneratePlayUrl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (!data.success) { showError(data.message || 'Failed to generate play URL.'); return; }
+
+        var url = data.play_url;
+        document.getElementById('drmIframe').src = url;
+        var linkEl = document.getElementById('playUrlDisplay');
+        linkEl.href = url;
+        linkEl.textContent = url;
+
+        document.getElementById('infoType').textContent = streamingType === 'hls'
+            ? 'HLS / FairPlay' : 'DASH / Widevine + PlayReady';
+
+        var certRow = document.getElementById('certRow');
+        if (streamingType === 'hls') {
+            document.getElementById('infoCertUrl').textContent =
+                'https://drm-license.doverunner.com/ri/fpsKeyManager.do?siteId=' + siteId;
+            certRow.style.display = '';
+        } else {
+            certRow.style.display = 'none';
+        }
+
+        document.getElementById('playerSection').style.display = 'block';
+    } catch (err) {
+        showError('Error: ' + err.message);
+    } finally {
+        btn.textContent = 'Generate & Play';
+        btn.disabled = false;
+    }
+}
+
+function showError(msg) {
+    var el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+</script>

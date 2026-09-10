@@ -1,0 +1,319 @@
+@{
+    ViewBag.Title = "Kollus Player Sample";
+}
+
+<div style="max-width:720px; margin:50px auto;">
+    <h2>Kollus Player Sample</h2>
+
+    <!-- Basic Settings -->
+    <div class="panel panel-default">
+        <div class="panel-heading"><strong>Basic Settings</strong></div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label>Secret Key</label>
+                <input id="secretKey" type="text" class="form-control" value="@ViewBag.DefaultSecretKey" />
+            </div>
+            <div class="form-group">
+                <label>Custom Key</label>
+                <input id="customKey" type="text" class="form-control" value="@ViewBag.DefaultCustomKey" />
+            </div>
+            <div class="form-group">
+                <label>MCK (Media Content Key)</label>
+                <input id="mck" type="text" class="form-control" value="@ViewBag.DefaultMck" placeholder="e.g. NNHk8cm6" />
+            </div>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>CUID (Viewer ID)</label>
+                        <input id="cuid" type="text" class="form-control" value="sample_user" />
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Expiry (minutes)</label>
+                        <input id="expt" type="number" class="form-control" value="3" min="1" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Options -->
+    <div class="panel panel-default">
+        <div class="panel-heading" style="cursor:pointer;" onclick="toggleAdvanced()">
+            <strong>Advanced Options</strong>
+            <span id="advToggle" class="pull-right">&#9660;</span>
+        </div>
+        <div class="panel-body" id="advancedPanel" style="display:none;">
+
+            <h5 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:6px;">Seek</h5>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label><input type="checkbox" id="seekEnabled" checked /> Allow Seek</label>
+                        <p class="help-block" style="font-size:12px;">Uncheck to disable scrubbing in the player.</p>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Seekable End (sec)</label>
+                        <input id="seekableEnd" type="number" class="form-control" value="0" min="0" />
+                        <p class="help-block" style="font-size:12px;">0 = no limit. User can only seek up to this point.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 style="border-bottom:1px solid #eee; padding-bottom:6px;">Intro / Outro</h5>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Intro MCK</label>
+                        <input id="introMck" type="text" class="form-control" placeholder="MCK played before main content" />
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Outro MCK</label>
+                        <input id="outroMck" type="text" class="form-control" placeholder="MCK played after main content" />
+                    </div>
+                </div>
+            </div>
+
+            <h5 style="border-bottom:1px solid #eee; padding-bottom:6px;">Play Section</h5>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>Start (sec)</label>
+                        <input id="sectionStart" type="number" class="form-control" value="0" min="0" />
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label>End (sec)</label>
+                        <input id="sectionEnd" type="number" class="form-control" value="0" min="0" />
+                        <p class="help-block" style="font-size:12px;">0 = disabled. Restricts playback to this range.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 style="border-bottom:1px solid #eee; padding-bottom:6px;">Playback Rate</h5>
+            <div class="form-group">
+                <label><input type="checkbox" id="disablePlayrate" /> Disable Playback Rate Control</label>
+                <p class="help-block" style="font-size:12px;">Hides the speed control from the player UI.</p>
+            </div>
+
+            <h5 style="border-bottom:1px solid #eee; padding-bottom:6px;">Next Episode</h5>
+            <div class="form-group">
+                <label><input type="checkbox" id="nextEpisode" /> Enable Next Episode Callback</label>
+                <p class="help-block" style="font-size:12px;">Player calls <code>/callback/next-episode</code> at end of content.</p>
+            </div>
+
+            <h5 style="border-bottom:1px solid #eee; padding-bottom:6px;">Watermark</h5>
+            <div class="form-group">
+                <label><input type="checkbox" id="watermark" onchange="toggleWatermarkDetail(this)" /> Enable Watermark (shows CUID)</label>
+            </div>
+            <div id="watermarkDetail" style="display:none;">
+                <div class="row">
+                    <div class="col-sm-3">
+                        <div class="form-group">
+                            <label>Font Size (px)</label>
+                            <input id="wmFontSize" type="number" class="form-control" value="10" />
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="form-group">
+                            <label>Color (HEX)</label>
+                            <input id="wmColor" type="text" class="form-control" value="FFFFFF" />
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="form-group">
+                            <label>Alpha (0-255)</label>
+                            <input id="wmAlpha" type="number" class="form-control" value="128" min="0" max="255" />
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-3">
+                        <div class="form-group">
+                            <label>Show Time (sec)</label>
+                            <input id="wmShowTime" type="number" class="form-control" value="3" />
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="form-group">
+                            <label>Hide Time (sec)</label>
+                            <input id="wmHideTime" type="number" class="form-control" value="300" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <button id="issueBtn" onclick="handleJwtIssue()" class="btn btn-primary btn-block">Generate &amp; Play</button>
+
+    <div id="errorMsg" class="alert alert-danger" style="display:none; margin-top:12px;"></div>
+
+    <!-- Player -->
+    <div id="playerSection" style="display:none; margin-top:20px;">
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Web Player</strong></div>
+            <div class="panel-body" style="padding:0;">
+                <div style="position:relative; width:100%; padding-top:56.25%;">
+                    <iframe id="kollusIframe" src="about:blank"
+                        style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
+                        allowfullscreen
+                        allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>Mobile Player</strong> <small>Kollus app required</small></div>
+            <div class="panel-body">
+                <a href="javascript:void(0);" onclick="handlePlayerCall('path')" class="btn btn-primary">Stream</a>
+                <a href="javascript:void(0);" onclick="handlePlayerCall('download')" class="btn btn-success">Download</a>
+            </div>
+        </div>
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><strong>JWT Info</strong></div>
+            <div class="panel-body">
+                <p style="margin:0 0 4px; font-size:12px; color:#888;">Token</p>
+                <code id="jwtTokenDisplay" style="word-break:break-all; font-size:11px;"></code>
+                <hr style="margin:10px 0;" />
+                <p style="margin:0 0 4px; font-size:12px; color:#888;">Play URL</p>
+                <a id="jwtLinkDisplay" href="#" target="_blank" style="word-break:break-all; font-size:11px;"></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentJWT = null;
+var currentCustomKey = null;
+
+function toggleAdvanced() {
+    var p = document.getElementById('advancedPanel');
+    var t = document.getElementById('advToggle');
+    var show = p.style.display === 'none';
+    p.style.display = show ? 'block' : 'none';
+    t.innerHTML = show ? '&#9650;' : '&#9660;';
+}
+
+function toggleWatermarkDetail(cb) {
+    document.getElementById('watermarkDetail').style.display = cb.checked ? 'block' : 'none';
+}
+
+async function handleJwtIssue() {
+    var mck = document.getElementById('mck').value.trim();
+    if (!mck) { showError('Please enter an MCK.'); return; }
+
+    document.getElementById('errorMsg').style.display = 'none';
+    document.getElementById('playerSection').style.display = 'none';
+
+    var btn = document.getElementById('issueBtn');
+    btn.textContent = 'Issuing...';
+    btn.disabled = true;
+
+    var body = {
+        Mck:              mck,
+        Cuid:             document.getElementById('cuid').value.trim() || 'sample_user',
+        Expt:             parseInt(document.getElementById('expt').value) || 3,
+        SecretKey:        document.getElementById('secretKey').value.trim(),
+        CustomKey:        document.getElementById('customKey').value.trim(),
+        Seek:             document.getElementById('seekEnabled').checked,
+        SeekableEnd:      parseInt(document.getElementById('seekableEnd').value) || 0,
+        Intro:            document.getElementById('introMck').value.trim() || null,
+        Outro:            document.getElementById('outroMck').value.trim() || null,
+        PlaySectionStart: parseInt(document.getElementById('sectionStart').value) || 0,
+        PlaySectionEnd:   parseInt(document.getElementById('sectionEnd').value) || 0,
+        DisablePlayrate:  document.getElementById('disablePlayrate').checked,
+        NextEpisode:      document.getElementById('nextEpisode').checked,
+        Watermark:        document.getElementById('watermark').checked,
+        WatermarkFontSize:  parseInt(document.getElementById('wmFontSize').value) || 10,
+        WatermarkColor:     document.getElementById('wmColor').value.trim() || 'FFFFFF',
+        WatermarkAlpha:     parseInt(document.getElementById('wmAlpha').value) || 128,
+        WatermarkShowTime:  parseInt(document.getElementById('wmShowTime').value) || 3,
+        WatermarkHideTime:  parseInt(document.getElementById('wmHideTime').value) || 300,
+    };
+
+    try {
+        var res = await fetch('/jwt/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (data.error) { showError(data.error); return; }
+
+        currentJWT       = data.Token;
+        currentCustomKey = body.CustomKey;
+
+        document.getElementById('kollusIframe').src = data.Link;
+        document.getElementById('jwtTokenDisplay').textContent = data.Token;
+        var linkEl = document.getElementById('jwtLinkDisplay');
+        linkEl.href = data.Link;
+        linkEl.textContent = data.Link;
+        document.getElementById('playerSection').style.display = 'block';
+    } catch (err) {
+        showError('Error: ' + err.message);
+    } finally {
+        btn.textContent = 'Generate & Play';
+        btn.disabled = false;
+    }
+}
+
+function showError(msg) {
+    var el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function isMobile() {
+    var a = navigator.userAgent;
+    return /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(a) ||
+           (/Linux/i.test(a) && navigator.maxTouchPoints > 0) ||
+           (a.includes('Macintosh') && navigator.maxTouchPoints > 0);
+}
+function isPageVisible() {
+    return document.hidden !== undefined ? !document.hidden : true;
+}
+function kollusSchemeCall(p) {
+    var a = navigator.userAgent.toLowerCase();
+    var isIOS = /iphone|ipad|ipod/.test(a) || (a.includes('macintosh') && navigator.maxTouchPoints > 0);
+    var general = 'kollus://' + p;
+    var intent  = 'intent://' + p + '#Intent;package=com.kollus.media;scheme=kollus;end';
+    var iframe  = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    var t = +new Date();
+    setTimeout(function() {
+        if (isIOS) {
+            var timer = setTimeout(function() {
+                if (isPageVisible() && +new Date() - t < 4000)
+                    location.href = 'https://itunes.apple.com/us/app/kollusplayer/id760006888?l=ko&ls=1&mt=8';
+            }, 3000);
+            window.addEventListener('visibilitychange', function() { if (isPageVisible()) clearTimeout(timer); });
+            location.href = general;
+        } else {
+            var chromeVer = navigator.appVersion.match(/Chrome\/(\d+\.\d+)/);
+            var chrome25 = a.includes('chrome') && chromeVer && chromeVer[1] > 25;
+            if (chrome25 && !a.includes('daum')) { location.href = intent; }
+            else {
+                setTimeout(function() { if (+new Date()-t<2000) location.href='market://details?id=com.kollus.media'; }, 1500);
+                iframe.src = general;
+            }
+        }
+    }, 1);
+}
+function handlePlayerCall(method) {
+    if (!currentJWT) { alert('Please issue a JWT first.'); return; }
+    if (!isMobile()) { alert('Please run on a mobile device.'); return; }
+    kollusSchemeCall(method + '?url=' + encodeURIComponent(
+        'https://v.kr.kollus.com/si?jwt=' + currentJWT + '&custom_key=' + currentCustomKey));
+}
+</script>

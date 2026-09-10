@@ -1,0 +1,16 @@
+@{
+    ViewBag.Title = "Kollus Player Demo";
+}
+
+<div style="max-width:800px; margin:50px auto;">
+    <h1>Kollus Player Demo</h1>
+
+    <div style="position:relative; width:100%; padding-top:56.25%;">
+        <iframe
+            src="@ViewBag.PlayerUrl"
+            style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
+            allowfullscreen
+            allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;">
+        </iframe>
+    </div>
+</div>

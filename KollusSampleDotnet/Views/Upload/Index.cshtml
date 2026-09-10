@@ -1,0 +1,134 @@
+@{
+    ViewBag.Title = "Kollus File Upload";
+}
+
+<div style="max-width:800px; margin:50px auto;">
+    <h2>Kollus File Upload</h2>
+
+    <div class="form-group">
+        <label>API Token</label>
+        <input id="apiToken" type="text" class="form-control" value="@ViewBag.DefaultApiToken" />
+    </div>
+    <div class="form-group">
+        <label>Title</label>
+        <input id="title" type="text" class="form-control" placeholder="Video title" />
+    </div>
+    <div class="form-group">
+        <label>Category Key</label>
+        <input id="categoryKey" type="text" class="form-control" value="@ViewBag.DefaultCategoryKey" />
+    </div>
+    <div class="row">
+        <div class="col-sm-6">
+            <div class="form-group">
+                <label>Encryption</label>
+                <select id="isEncryption" class="form-control">
+                    <option value="1">Encrypted content</option>
+                    <option value="0">Plain (unencrypted) content</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <div class="form-group">
+                <label>Content Type</label>
+                <select id="isAudio" class="form-control">
+                    <option value="0">Video</option>
+                    <option value="1">Audio only</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Select File</label>
+        <input id="fileInput" type="file" accept="video/*,audio/*" />
+    </div>
+
+    <button id="uploadBtn" type="button" class="btn btn-primary">Start Upload</button>
+
+    <div id="uploadInfo" class="panel panel-default" style="margin-top:20px; display:none;">
+        <div class="panel-body" id="uploadDetails"></div>
+    </div>
+
+    <div id="progressArea" style="margin-top:16px; display:none;">
+        <div style="width:100%; height:28px; background:#e0e0e0; border-radius:4px; overflow:hidden; position:relative;">
+            <div id="progressBar" style="height:100%; background:#5cb85c; width:0%; transition:width 0.3s;"></div>
+            <div id="progressText" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-weight:bold; color:#333;">0%</div>
+        </div>
+    </div>
+
+    <div id="completeInfo" class="alert alert-success" style="margin-top:12px; display:none;">
+        Upload complete &mdash; encoding has started.
+    </div>
+</div>
+
+<script>
+document.getElementById('uploadBtn').addEventListener('click', async function () {
+    var btn   = this;
+    var file  = document.getElementById('fileInput').files[0];
+    var title = document.getElementById('title').value.trim();
+
+    if (!title) { alert('Please enter a title.'); return; }
+    if (!file)  { alert('Please select a file.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+        var res = await fetch('/api/upload/create-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                AccessToken:        document.getElementById('apiToken').value,
+                ExpireTime:         '3600',
+                Title:              title,
+                CategoryKey:        document.getElementById('categoryKey').value,
+                IsEncryptionUpload: document.getElementById('isEncryption').value,
+                IsAudioUpload:      document.getElementById('isAudio').value
+            })
+        });
+
+        var result = await res.json();
+        if (result.status !== 'ok') throw new Error(JSON.stringify(result.error || result));
+
+        document.getElementById('uploadDetails').innerHTML =
+            '<p style="margin:0 0 6px;"><strong>Upload File Key:</strong> ' + result.data.upload_file_key + '</p>' +
+            '<p style="margin:0;"><strong>Encoding Status:</strong> <a href="' + result.data.progress_url + '" target="_blank">Check progress</a></p>';
+        document.getElementById('uploadInfo').style.display = 'block';
+        document.getElementById('progressArea').style.display = 'block';
+
+        var formData = new FormData();
+        formData.append('upload-file', file);
+
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function (e) {
+            if (e.lengthComputable) {
+                var pct = Math.round(e.loaded / e.total * 100);
+                document.getElementById('progressBar').style.width = pct + '%';
+                document.getElementById('progressText').textContent = pct + '%';
+            }
+        });
+        xhr.addEventListener('load', function () {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                btn.textContent = 'Upload Complete';
+                document.getElementById('completeInfo').style.display = 'block';
+            } else {
+                alert('Upload failed: ' + xhr.status);
+                btn.disabled = false;
+                btn.textContent = 'Start Upload';
+            }
+        });
+        xhr.addEventListener('error', function () {
+            alert('Network error occurred.');
+            btn.disabled = false;
+            btn.textContent = 'Start Upload';
+        });
+
+        xhr.open('POST', result.data.upload_url);
+        xhr.send(formData);
+
+    } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Start Upload';
+    }
+});
+</script>

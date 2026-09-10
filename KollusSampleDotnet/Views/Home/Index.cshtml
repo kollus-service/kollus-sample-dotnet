@@ -1,0 +1,70 @@
+@{
+    ViewBag.Title = "Kollus .NET Sample";
+}
+
+<div style="max-width:800px; margin:60px auto;">
+    <h1>Kollus .NET Sample</h1>
+    <p class="lead">Kollus platform integration sample for ASP.NET MVC.</p>
+    <hr />
+
+    <div class="row" style="margin-top:30px; display:flex; flex-wrap:wrap;">
+        <div class="col-sm-3" style="display:flex;">
+            <div class="panel panel-default" style="flex:1; display:flex; flex-direction:column;">
+                <div class="panel-body" style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; padding:30px 20px;">
+                    <h3 style="margin-top:0;">Player Demo</h3>
+                    <p style="color:#666; font-size:13px; flex:1;">Embedded player with a preset JWT.</p>
+                    <a href="/demo" class="btn btn-primary">Open</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-3" style="display:flex;">
+            <div class="panel panel-default" style="flex:1; display:flex; flex-direction:column;">
+                <div class="panel-body" style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; padding:30px 20px;">
+                    <h3 style="margin-top:0;">Player Sample</h3>
+                    <p style="color:#666; font-size:13px; flex:1;">JWT generator with advanced playback options.</p>
+                    <a href="/sample" class="btn btn-primary">Open</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-3" style="display:flex;">
+            <div class="panel panel-default" style="flex:1; display:flex; flex-direction:column;">
+                <div class="panel-body" style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; padding:30px 20px;">
+                    <h3 style="margin-top:0;">Player MultiDRM</h3>
+                    <p style="color:#666; font-size:13px; flex:1;">DRM JWT generator for Widevine, PlayReady, FairPlay.</p>
+                    <a href="/MultiDrm" class="btn btn-primary">Open</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-3" style="display:flex;">
+            <div class="panel panel-default" style="flex:1; display:flex; flex-direction:column;">
+                <div class="panel-body" style="flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; padding:30px 20px;">
+                    <h3 style="margin-top:0;">File Upload</h3>
+                    <p style="color:#666; font-size:13px; flex:1;">Upload video or audio via the Kollus Upload API.</p>
+                    <a href="/upload" class="btn btn-primary">Open</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default" style="margin-top:10px;">
+        <div class="panel-heading"><strong>API Endpoints</strong></div>
+        <table class="table" style="margin:0;">
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th>Path</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><span class="label label-primary">GET</span> <span class="label label-success">POST</span></td><td><code>/jwt/create</code></td><td>Generate play JWT</td></tr>
+                <tr><td><span class="label label-warning">POST</span></td><td><code>/callback/play</code></td><td>Play callback</td></tr>
+                <tr><td><span class="label label-warning">POST</span></td><td><code>/callback/drm</code></td><td>DRM callback</td></tr>
+                <tr><td><span class="label label-warning">POST</span></td><td><code>/callback/lms</code></td><td>LMS callback</td></tr>
+                <tr><td><span class="label label-warning">POST</span></td><td><code>/callback/next-episode</code></td><td>Next episode callback</td></tr>
+                <tr><td><span class="label label-warning">POST</span></td><td><code>/api/upload/create-url</code></td><td>Create upload URL</td></tr>
+                <tr><td><span class="label label-primary">GET</span></td><td><code>/api/upload/progress/{key}</code></td><td>Encoding progress</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
