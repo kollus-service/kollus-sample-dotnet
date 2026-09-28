@@ -1,3 +1,4 @@
+// 플레이어 재생 데모 컨트롤러: 설정된 기본 키로 JWT를 발급해 데모 페이지를 렌더링한다.
 using System;
 using System.Configuration;
 using System.Web.Mvc;
@@ -23,7 +24,7 @@ namespace KollusSampleDotnet.Controllers
             {
                 MediaContentKey = mck,
                 ClientUserId    = "sample_user",
-                ExpireSeconds   = 3600,
+                ExpireSeconds   = KollusDefaults.DemoJwtExpireSeconds,
             });
 
             ViewBag.PlayerUrl = result.Link;

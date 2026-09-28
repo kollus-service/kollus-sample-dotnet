@@ -1,3 +1,4 @@
+// 멀티 DRM 서비스: 멀티 DRM 전용 키로 서명한 재생 URL과 DoveRunner 라이선스 토큰(암호화된 라이선스 룰·커스텀 헤더)을 생성한다.
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -24,6 +25,12 @@ namespace KollusSampleDotnet.Services
         private const int    POLICY_DURATION_SEC = 86400;
         private const int    PLAYREADY_SEC_LEVEL = 150;
 
+        /// <summary>Kollus 채널 키와 DoveRunner 사이트 자격 정보로 서비스를 초기화합니다.</summary>
+        /// <param name="securityKey">Kollus 채널 보안키 — 플레이어 JWT 서명</param>
+        /// <param name="customKey">Kollus 채널 사용자키 — 재생 링크의 custom_key</param>
+        /// <param name="doveRunnerSiteKey">DoveRunner Site Key — 라이선스 정책 AES 암호화 키</param>
+        /// <param name="doveRunnerAccessKey">DoveRunner Access Key — 라이선스 토큰 해시 입력</param>
+        /// <param name="doveRunnerSiteId">DoveRunner Site ID — 인증서 URL과 토큰 site_id 필드</param>
         public KollusMultiDrmService(string securityKey, string customKey,
                                      string doveRunnerSiteKey, string doveRunnerAccessKey, string doveRunnerSiteId)
         {
@@ -37,18 +44,28 @@ namespace KollusSampleDotnet.Services
         /// <summary>멀티 DRM(Inka/DoveRunner) 라이선스 정책이 포함된 플레이어 재생 URL을 생성합니다.</summary>
         /// <param name="options">재생 옵션(콘텐츠 키, 사용자 ID, 스트리밍 타입 등)</param>
         /// <returns>DRM 정책이 담긴 JWT를 포함한 플레이어 재생 URL</returns>
+        /// <exception cref="ArgumentNullException">DoveRunner Site Key 또는 Kollus 보안키가 null이면 암호화/서명 단계에서 발생</exception>
+        /// <exception cref="CryptographicException">DoveRunner Site Key 길이가 AES 키 규격에 맞지 않으면 발생</exception>
         public string GenerateMultiDrmPlayUrl(MultiDrmJwtOptions options)
         {
+            // 라이선스 토큰은 클라이언트 입력을 받지 않고 서버 설정(DoveRunner 키)으로 항상 새로 생성
             var licenseToken = CreateInkaPayload(options.ClientUserId, options.UploadFileKey, options.StreamingType);
 
+            // drm_policy: Kollus 플레이어가 DRM 라이선스를 요청할 때 사용하는 정책 (mc 항목 단위)
             var drmPolicy = new Dictionary<string, object>
             {
+                // kind: DRM 종류 — "inka" = Inka Entworks(DoveRunner/PallyCon) 멀티 DRM
                 { "kind",           "inka" },
+                // streaming_type: 재생 스트림 포맷 — "dash"(Widevine/PlayReady) 또는 "hls"(FairPlay)
                 { "streaming_type", options.StreamingType },
                 { "data", new Dictionary<string, object>
                     {
+                        // license_url: DoveRunner 라이선스 발급 서버 주소
                         { "license_url",     LICENSE_URL },
+                        // certificate_url: FairPlay(HLS) 재생 시 필요한 사이트별 인증서 URL
                         { "certificate_url", string.Format(CERT_URL_TEMPLATE, _doveRunnerSiteId) },
+                        // custom_header: 플레이어가 라이선스 요청에 추가하는 HTTP 헤더
+                        //   key = pallycon-customdata-v2 (DoveRunner 규격 헤더명), value = 암호화된 라이선스 토큰
                         { "custom_header",   new Dictionary<string, object>
                             {
                                 { "key",   CUSTOM_HEADER_KEY },
@@ -73,6 +90,7 @@ namespace KollusSampleDotnet.Services
             };
 
             var jwt = GenerateJwt(payload);
+            // 일반 재생과 동일한 Kollus 웹 플레이어 URL 형식 (/s?jwt=&custom_key=)
             return $"https://v.kr.kollus.com/s?jwt={jwt}&custom_key={_customKey}";
         }
 
@@ -81,6 +99,8 @@ namespace KollusSampleDotnet.Services
         /// <param name="cid">콘텐츠 식별자(업로드 파일 키)</param>
         /// <param name="streamingType">스트리밍 타입 ("hls"면 FairPlay, 그 외 Widevine)</param>
         /// <returns>Base64로 인코딩된 라이선스 토큰</returns>
+        /// <exception cref="ArgumentNullException">DoveRunner Site Key가 null이면 AES 키 생성 단계에서 발생</exception>
+        /// <exception cref="CryptographicException">DoveRunner Site Key 길이가 AES 키 규격(16/24/32바이트)에 맞지 않으면 발생</exception>
         public string CreateInkaPayload(string userId, string cid, string streamingType)
         {
             var now       = DateTime.UtcNow;
@@ -108,6 +128,8 @@ namespace KollusSampleDotnet.Services
             var token = AesEncryptBase64(policyJson, _doveRunnerSiteKey, DOVE_RUNNER_IV);
 
             // 3. SHA256 hash
+            // 결합 순서(accessKey + drmType + siteId + userId + cid + token + timestamp)는 DoveRunner 규격으로 고정 —
+            // 라이선스 서버가 같은 순서로 재계산해 비교하므로 순서가 바뀌면 검증에 실패한다
             var hashInput = _doveRunnerAccessKey + drmType + _doveRunnerSiteId + userId + cid + token + timestamp;
             var hash      = Sha256Base64(hashInput);
 

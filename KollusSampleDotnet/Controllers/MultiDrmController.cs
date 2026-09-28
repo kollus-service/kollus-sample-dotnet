@@ -1,3 +1,4 @@
+// 멀티 DRM 데모 컨트롤러: 멀티 DRM 재생 URL 생성과 DoveRunner 라이선스 토큰 발급을 처리한다.
 using System;
 using System.Configuration;
 using System.Web.Mvc;
@@ -31,8 +32,6 @@ namespace KollusSampleDotnet.Controllers
         [HttpGet]
         public ActionResult Index()
         {
-            ViewBag.DefaultSecretKey    = ConfigurationManager.AppSettings["Kollus.MultiDrm.SecurityKey"] ?? "";
-            ViewBag.DefaultCustomKey    = ConfigurationManager.AppSettings["Kollus.MultiDrm.CustomKey"] ?? "";
             ViewBag.DefaultMck          = ConfigurationManager.AppSettings["Kollus.MultiDrm.MediaContentKey"] ?? "";
             ViewBag.DefaultSiteId       = ConfigurationManager.AppSettings["Kollus.MultiDrm.SiteId"] ?? "";
             ViewBag.DefaultUploadFileKey = ConfigurationManager.AppSettings["Kollus.MultiDrm.UploadFileKey"] ?? "";

@@ -1,3 +1,4 @@
+// 홈 화면 컨트롤러: 각 샘플 페이지로 가는 링크를 제공하는 메인 페이지.
 using System.Web.Mvc;
 
 namespace KollusSampleDotnet.Controllers

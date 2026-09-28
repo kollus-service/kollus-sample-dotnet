@@ -1,6 +1,8 @@
+// 플레이어 JWT 발급 API 컨트롤러: 쿼리 또는 JSON 파라미터로 Kollus 플레이어 토큰을 만든다.
 using System;
 using System.Configuration;
 using System.Web.Mvc;
+using KollusSampleDotnet.Models;
 using KollusSampleDotnet.Services;
 
 namespace KollusSampleDotnet.Controllers
@@ -16,16 +18,28 @@ namespace KollusSampleDotnet.Controllers
         private readonly string _defaultSecretKey;
         private readonly string _defaultCustomKey;
 
+        /// <summary>Web.config의 채널 보안키/사용자키를 기본값으로 읽어 둡니다. 요청에 키가 없으면 이 값을 사용합니다.</summary>
         public JwtController()
         {
             _defaultSecretKey = ConfigurationManager.AppSettings["Kollus.SecurityKey"];
             _defaultCustomKey = ConfigurationManager.AppSettings["Kollus.CustomKey"];
         }
 
+        /// <summary>쿼리 파라미터로 플레이어 JWT를 발급합니다 (GET /jwt/create).</summary>
+        /// <param name="mck">재생할 미디어 콘텐츠 키 (필수)</param>
+        /// <param name="cuid">시청자 식별자(client_user_id)</param>
+        /// <param name="expt">토큰 만료 시간(분)</param>
+        /// <param name="secretKey">채널 보안키 — 생략 시 Web.config 값 사용</param>
+        /// <param name="customKey">채널 사용자키 — 생략 시 Web.config 값 사용</param>
+        /// <param name="seek">탐색(스크러빙) 허용 여부 — null이면 허용</param>
+        /// <param name="intro">본편 앞에 재생할 인트로 MCK</param>
+        /// <param name="outro">본편 뒤에 재생할 아웃트로 MCK</param>
+        /// <param name="nextEpisode">본편 종료 시 next-episode 콜백 호출 여부</param>
+        /// <returns>JSON { Token, Link } — 실패 시 { error }</returns>
         [Route("create")]
         [HttpGet]
         public ActionResult Create(
-            string mck, string cuid = "sample_user", int expt = 3,
+            string mck, string cuid = "sample_user", int expt = KollusDefaults.DefaultExpireMinutes,
             string secretKey = null, string customKey = null,
             bool? seek = null, string intro = null, string outro = null,
             bool nextEpisode = false)
@@ -39,6 +53,9 @@ namespace KollusSampleDotnet.Controllers
             });
         }
 
+        /// <summary>JSON 바디로 플레이어 JWT를 발급합니다 (POST /jwt/create). 재생 구간·워터마크 등 전체 옵션을 지원합니다.</summary>
+        /// <param name="req">발급 옵션 (JSON 바디에서 모델 바인딩)</param>
+        /// <returns>JSON { Token, Link } — 실패 시 { error }</returns>
         [Route("create")]
         [HttpPost]
         public ActionResult Create(JwtCreateRequest req)
@@ -56,11 +73,12 @@ namespace KollusSampleDotnet.Controllers
                 var sKey = string.IsNullOrEmpty(req.SecretKey) ? _defaultSecretKey : req.SecretKey;
                 var cKey = string.IsNullOrEmpty(req.CustomKey) ? _defaultCustomKey : req.CustomKey;
 
-                var options = new Models.KollusJwtOptions
+                var options = new KollusJwtOptions
                 {
                     MediaContentKey = req.Mck,
                     ClientUserId    = req.Cuid ?? "sample_user",
-                    ExpireSeconds   = req.Expt * 60,
+                    // 클라이언트는 분 단위(expt)로 보내고 JWT 옵션은 초 단위이므로 환산
+                    ExpireSeconds   = req.Expt * KollusDefaults.SecondsPerMinute,
                     IntroMck        = req.Intro,
                     OutroMck        = req.Outro,
                     NextEpisode     = req.NextEpisode,
@@ -70,14 +88,14 @@ namespace KollusSampleDotnet.Controllers
                 };
 
                 if (req.PlaySectionEnd > 0)
-                    options.PlaySection = new Models.PlaySection
+                    options.PlaySection = new PlaySection
                     {
                         StartTime = req.PlaySectionStart,
                         EndTime   = req.PlaySectionEnd
                     };
 
                 if (req.Watermark)
-                    options.Watermarking = new Models.WatermarkingPolicy
+                    options.Watermarking = new WatermarkingPolicy
                     {
                         CodeKind         = "client_user_id",
                         FontSize         = req.WatermarkFontSize,
@@ -101,11 +119,15 @@ namespace KollusSampleDotnet.Controllers
         }
     }
 
+    /// <summary>
+    /// /jwt/create 요청 DTO. GET 쿼리 파라미터와 POST JSON 바디 양쪽에서 모델 바인딩됩니다.
+    /// 기본값은 KollusDefaults와 동일하게 유지해 뷰·모델과 어긋나지 않도록 합니다.
+    /// </summary>
     public class JwtCreateRequest
     {
         public string Mck             { get; set; }
         public string Cuid            { get; set; } = "sample_user";
-        public int    Expt            { get; set; } = 3;
+        public int    Expt            { get; set; } = KollusDefaults.DefaultExpireMinutes;
         public string SecretKey       { get; set; }
         public string CustomKey       { get; set; }
         public bool?  Seek            { get; set; }
@@ -119,10 +141,10 @@ namespace KollusSampleDotnet.Controllers
         public int    PlaySectionEnd   { get; set; } = 0;
         // Watermark
         public bool   Watermark       { get; set; } = false;
-        public int    WatermarkFontSize { get; set; } = 10;
-        public string WatermarkColor  { get; set; } = "FFFFFF";
-        public int    WatermarkAlpha  { get; set; } = 128;
-        public int    WatermarkShowTime { get; set; } = 3;
-        public int    WatermarkHideTime { get; set; } = 300;
+        public int    WatermarkFontSize { get; set; } = KollusDefaults.WatermarkFontSize;
+        public string WatermarkColor  { get; set; } = KollusDefaults.WatermarkFontColor;
+        public int    WatermarkAlpha  { get; set; } = KollusDefaults.WatermarkAlpha;
+        public int    WatermarkShowTime { get; set; } = KollusDefaults.WatermarkShowTime;
+        public int    WatermarkHideTime { get; set; } = KollusDefaults.WatermarkHideTime;
     }
 }

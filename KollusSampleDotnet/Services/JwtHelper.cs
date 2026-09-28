@@ -1,3 +1,5 @@
+// HMAC-SHA256(HS256) JWT 서명 공통 유틸.
+// KollusJwtService / KollusMultiDrmService가 조립한 클레임을 Kollus 채널 보안키로 서명한다.
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -24,7 +26,9 @@ namespace KollusSampleDotnet.Services
                 return $"{input}.{Base64Url(hmac.ComputeHash(Encoding.UTF8.GetBytes(input)))}";
         }
 
-        /// URL-safe Base64 인코딩 (패딩 제거, +/- 치환)
+        /// <summary>URL-safe Base64(base64url) 인코딩 — 패딩(=) 제거, '+'→'-', '/'→'_' 치환</summary>
+        /// <param name="input">인코딩할 바이트 배열</param>
+        /// <returns>base64url 문자열</returns>
         internal static string Base64Url(byte[] input) =>
             Convert.ToBase64String(input).Replace('+', '-').Replace('/', '_').TrimEnd('=');
     }

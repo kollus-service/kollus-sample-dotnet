@@ -105,6 +105,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\KollusDefaults.cs" />
     <Compile Include="Models\KollusJwtOptions.cs" />
     <Compile Include="Models\MultiDrmJwtOptions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -115,6 +116,7 @@
   <ItemGroup>
     <Content Include="Views\web.config" />
     <None Include="packages.config" />
+    <None Include="Web.config.example" />
     <Content Include="Views\_ViewStart.cshtml" />
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />

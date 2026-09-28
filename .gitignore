@@ -365,3 +365,10 @@ FodyWeavers.xsd
 KollusSampleDotnet/Web.config
 # 로그 파일
 KollusSampleDotnet/logs/
+
+# 가이드 공통 항목
+.env
+config.yml
+target/
+.gradle/
+vendor/

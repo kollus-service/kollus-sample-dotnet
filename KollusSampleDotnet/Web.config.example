@@ -14,6 +14,9 @@
     <add key="Kollus.SecurityKey"     value="YOUR_SECURITY_KEY"/>
     <add key="Kollus.CustomKey"       value="YOUR_CUSTOM_KEY"/>
     <add key="Kollus.MediaContentKey" value="YOUR_MCK"/>
+    <!-- 다음 회차 MCK 목록 — 콤마(,)로 구분해 재생 순서대로 나열.
+         /callback/next-episode가 현재 MCK 바로 다음 항목을 next_url로 반환하고, 마지막 항목이면 result=0 응답 -->
+    <add key="Kollus.NextEpisodeMcks" value="YOUR_MCK_1,YOUR_MCK_2"/>
 
     <!-- Kollus Upload API -->
     <add key="Kollus.ApiAccessToken" value="YOUR_API_ACCESS_TOKEN"/>

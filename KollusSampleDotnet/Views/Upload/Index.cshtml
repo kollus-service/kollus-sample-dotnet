@@ -1,3 +1,5 @@
+@* File Upload — 서버 프록시(/api/upload/create-url)로 Kollus 업로드 URL을 발급받은 뒤,
+   브라우저가 그 URL로 파일을 직접 multipart POST하며 진행률을 표시하는 페이지 *@
 @{
     ViewBag.Title = "Kollus File Upload";
 }
@@ -61,24 +63,51 @@
 </div>
 
 <script>
-document.getElementById('uploadBtn').addEventListener('click', async function () {
-    var btn   = this;
-    var file  = document.getElementById('fileInput').files[0];
-    var title = document.getElementById('title').value.trim();
+// 업로드 URL 유효 시간(초) — 서버 KollusDefaults.UploadUrlExpireSeconds와 동일한 값을 ViewBag으로 받음
+const DEFAULT_UPLOAD_EXPIRE_TIME = @ViewBag.DefaultUploadExpireTime;
+// 업로드 XHR 응답을 성공으로 판정하는 HTTP 상태 코드 범위(2xx)
+const HTTP_STATUS_SUCCESS_MIN = 200;
+const HTTP_STATUS_SUCCESS_MAX = 299;
+// 진행률 표시용 백분율 배율
+const PERCENT_SCALE = 100;
+
+const UPLOAD_BUTTON_LABEL_IDLE       = 'Start Upload';
+const UPLOAD_BUTTON_LABEL_PROCESSING = 'Processing...';
+const UPLOAD_BUTTON_LABEL_DONE       = 'Upload Complete';
+
+/**
+ * 업로드 버튼의 활성 상태와 문구를 바꾼다.
+ * @@param {boolean} disabled 버튼 비활성화 여부
+ * @@param {string} label 버튼에 표시할 문구
+ */
+function setUploadButton(disabled, label) {
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = disabled;
+    btn.textContent = label;
+}
+
+/**
+ * Start Upload 버튼 클릭 핸들러 — 서버 프록시로 Kollus 업로드 URL을 발급받고, 그 URL로 파일을 XHR 전송한다.
+ */
+async function handleUploadClick() {
+    const file  = document.getElementById('fileInput').files[0];
+    const title = document.getElementById('title').value.trim();
 
     if (!title) { alert('Please enter a title.'); return; }
     if (!file)  { alert('Please select a file.'); return; }
 
-    btn.disabled = true;
-    btn.textContent = 'Processing...';
+    setUploadButton(true, UPLOAD_BUTTON_LABEL_PROCESSING);
 
     try {
-        var res = await fetch('/api/upload/create-url', {
+        // 1) 서버 프록시 /api/upload/create-url → Kollus Upload API create-url 호출.
+        //    필드명은 서버 UploadCreateUrlRequest 프로퍼티와 일치하며 ExpireTime은 Kollus 폼 필드 규격대로 문자열로 보낸다.
+        //    AccessToken을 비우면 서버가 Web.config의 토큰을 사용한다(토큰을 브라우저에 노출하지 않으려면 이 방식 권장)
+        const res = await fetch('/api/upload/create-url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 AccessToken:        document.getElementById('apiToken').value,
-                ExpireTime:         '3600',
+                ExpireTime:         String(DEFAULT_UPLOAD_EXPIRE_TIME),
                 Title:              title,
                 CategoryKey:        document.getElementById('categoryKey').value,
                 IsEncryptionUpload: document.getElementById('isEncryption').value,
@@ -86,7 +115,8 @@ document.getElementById('uploadBtn').addEventListener('click', async function ()
             })
         });
 
-        var result = await res.json();
+        // Kollus 응답: { status: "ok", data: { upload_url, upload_file_key, progress_url } } — 실패 시 status가 "fail"
+        const result = await res.json();
         if (result.status !== 'ok') throw new Error(JSON.stringify(result.error || result));
 
         document.getElementById('uploadDetails').innerHTML =
@@ -95,40 +125,60 @@ document.getElementById('uploadBtn').addEventListener('click', async function ()
         document.getElementById('uploadInfo').style.display = 'block';
         document.getElementById('progressArea').style.display = 'block';
 
-        var formData = new FormData();
+        // 2) 발급받은 upload_url로 브라우저가 파일을 직접 전송.
+        //    multipart 필드명 'upload-file'은 Kollus 업로드 서버가 요구하는 고정 이름이다
+        const formData = new FormData();
         formData.append('upload-file', file);
 
-        var xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', function (e) {
-            if (e.lengthComputable) {
-                var pct = Math.round(e.loaded / e.total * 100);
-                document.getElementById('progressBar').style.width = pct + '%';
-                document.getElementById('progressText').textContent = pct + '%';
-            }
-        });
-        xhr.addEventListener('load', function () {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                btn.textContent = 'Upload Complete';
-                document.getElementById('completeInfo').style.display = 'block';
-            } else {
-                alert('Upload failed: ' + xhr.status);
-                btn.disabled = false;
-                btn.textContent = 'Start Upload';
-            }
-        });
-        xhr.addEventListener('error', function () {
-            alert('Network error occurred.');
-            btn.disabled = false;
-            btn.textContent = 'Start Upload';
-        });
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', handleUploadProgress);
+        xhr.addEventListener('load', handleUploadLoad);
+        xhr.addEventListener('error', handleUploadError);
 
+        // Kollus 업로드 URL은 1회용이며 expire_time(초) 안에만 유효 — multipart/form-data POST로 받는다
         xhr.open('POST', result.data.upload_url);
         xhr.send(formData);
-
     } catch (err) {
+        // 업로드 URL 발급 단계 실패(네트워크 오류, Kollus status "fail", JSON 파싱 실패) —
+        // 아직 파일 전송 전이므로 원인을 알리고 버튼을 복구해 바로 재시도할 수 있게 한다
         alert('Error: ' + err.message);
-        btn.disabled = false;
-        btn.textContent = 'Start Upload';
+        setUploadButton(false, UPLOAD_BUTTON_LABEL_IDLE);
     }
-});
+}
+
+/**
+ * XHR upload progress 이벤트 핸들러 — 전송된 바이트 비율로 진행률 바와 퍼센트 문구를 갱신한다.
+ * @@param {ProgressEvent} event 업로드 진행 이벤트
+ */
+function handleUploadProgress(event) {
+    if (!event.lengthComputable) return;
+    const pct = Math.round(event.loaded / event.total * PERCENT_SCALE);
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressText').textContent = pct + '%';
+}
+
+/**
+ * XHR load 이벤트 핸들러 — 2xx 응답이면 완료 안내를 표시하고, 그 외 상태면 실패를 알리고 버튼을 복구한다.
+ * @@param {ProgressEvent} event load 이벤트 (event.target이 XMLHttpRequest)
+ */
+function handleUploadLoad(event) {
+    const status = event.target.status;
+    if (status >= HTTP_STATUS_SUCCESS_MIN && status <= HTTP_STATUS_SUCCESS_MAX) {
+        setUploadButton(true, UPLOAD_BUTTON_LABEL_DONE);
+        document.getElementById('completeInfo').style.display = 'block';
+    } else {
+        alert('Upload failed: ' + status);
+        setUploadButton(false, UPLOAD_BUTTON_LABEL_IDLE);
+    }
+}
+
+/**
+ * XHR error 이벤트 핸들러 — 네트워크 단절 등으로 전송 자체가 실패한 경우 알리고 버튼을 복구한다.
+ */
+function handleUploadError() {
+    alert('Network error occurred.');
+    setUploadButton(false, UPLOAD_BUTTON_LABEL_IDLE);
+}
+
+document.getElementById('uploadBtn').addEventListener('click', handleUploadClick);
 </script>

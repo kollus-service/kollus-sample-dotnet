@@ -1,7 +1,10 @@
+// Kollus 플레이어 콜백 통합 컨트롤러: 재생/DRM/LMS/다음 회차 콜백을 받아 Kollus 규격 응답을 만든다.
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Text;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
@@ -30,14 +33,17 @@ namespace KollusSampleDotnet.Controllers
         // Next Episode JWT 만료 시간 (초)
         private const int NEXT_EPISODE_EXPIRE_SEC = 180;
 
-        // 다음 회차 MCK 목록 — 실제 서비스에서는 DB/API 조회로 교체
-        private static readonly string[] NextEpisodeMcks = { "YOUR_MCK_1", "YOUR_MCK_2" };
+        // 다음 회차 MCK 목록(재생 순서대로) — Web.config의 Kollus.NextEpisodeMcks(콤마 구분)에서 읽음.
+        // 실제 서비스에서는 DB/API 조회로 교체
+        private readonly string[] _nextEpisodeMcks;
 
+        /// <summary>Web.config의 채널 키로 콜백 응답 JWT 서비스를 준비하고, 다음 회차 MCK 목록을 읽어 둡니다.</summary>
         public CallbackController()
         {
-            var securityKey = ConfigurationManager.AppSettings["Kollus.SecurityKey"];
-            _customKey      = ConfigurationManager.AppSettings["Kollus.CustomKey"];
-            _jwtService     = new KollusJwtService(securityKey, _customKey);
+            var securityKey  = ConfigurationManager.AppSettings["Kollus.SecurityKey"];
+            _customKey       = ConfigurationManager.AppSettings["Kollus.CustomKey"];
+            _jwtService      = new KollusJwtService(securityKey, _customKey);
+            _nextEpisodeMcks = ParseMckList(ConfigurationManager.AppSettings["Kollus.NextEpisodeMcks"]);
         }
 
         // ── Play Callback ─────────────────────────────────────────────
@@ -53,7 +59,7 @@ namespace KollusSampleDotnet.Controllers
         public ActionResult Play()
         {
             if (!int.TryParse(Request.Form["kind"], out var kind))
-                return new HttpStatusCodeResult(400, "Invalid kind");
+                return new HttpStatusCodeResult((int)HttpStatusCode.BadRequest, "Invalid kind");
             var now  = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             object data;
@@ -99,7 +105,7 @@ namespace KollusSampleDotnet.Controllers
             }
             else
             {
-                return new HttpStatusCodeResult(400, "Unknown kind");
+                return new HttpStatusCodeResult((int)HttpStatusCode.BadRequest, "Unknown kind");
             }
 
             return SendCallbackJwt(new Dictionary<string, object>
@@ -115,13 +121,15 @@ namespace KollusSampleDotnet.Controllers
         // Request: items(JSON 배열) 필드 포함
 
         /// <summary>DRM 콜백 처리 — kind 1(다운로드 승인) / 2(완료) / 3(오프라인 재생 확인)</summary>
+        /// <returns>items 각 요소에 대응하는 승인 결과 배열을 담은 JWT(text/plain) — items 누락/파싱 실패 시 400</returns>
+        /// <exception cref="FormatException">items 요소의 kind 또는 start_at이 정수로 변환되지 않는 문자열인 경우</exception>
         [Route("drm")]
         [HttpPost]
         public ActionResult Drm()
         {
             var itemsJson = Request.Form["items"];
             if (string.IsNullOrEmpty(itemsJson))
-                return new HttpStatusCodeResult(400, "Missing items");
+                return new HttpStatusCodeResult((int)HttpStatusCode.BadRequest, "Missing items");
 
             List<Dictionary<string, object>> items;
             try
@@ -132,7 +140,7 @@ namespace KollusSampleDotnet.Controllers
             {
                 // items 필드가 유효한 JSON 배열이 아닌 경우 400 반환
                 System.Diagnostics.Debug.WriteLine($"[Callback/drm] items 파싱 실패: {ex.Message}");
-                return new HttpStatusCodeResult(400, "Invalid items JSON");
+                return new HttpStatusCodeResult((int)HttpStatusCode.BadRequest, "Invalid items JSON");
             }
 
             var dataList = new List<object>();
@@ -267,6 +275,8 @@ namespace KollusSampleDotnet.Controllers
                     ClientUserId    = id ?? "unknown",
                     ExpireSeconds   = NEXT_EPISODE_EXPIRE_SEC
                 });
+                // 플레이어 페이지 URL(/s)을 SI 링크(/si)로 변환 — next-episode 콜백 응답(next_url)과
+                // 모바일 앱 스킴 호출은 웹 페이지가 아닌 /si 형식의 링크를 사용한다
                 var nextUrl = result.Link.Replace("/s?", "/si?");
                 return Json(new { result = 1, next_url = nextUrl });
             }
@@ -327,23 +337,37 @@ namespace KollusSampleDotnet.Controllers
                 System.Diagnostics.Debug.WriteLine($"[Callback/lms] 로그 기록 실패: {ex.Message}");
             }
 
-            return new HttpStatusCodeResult(200);
+            return new HttpStatusCodeResult((int)HttpStatusCode.OK);
         }
 
         // ── Helpers ───────────────────────────────────────────────────
 
         private ActionResult SendCallbackJwt(Dictionary<string, object> payload)
         {
+            // Kollus 콜백 응답 계약: 응답 헤더 X-KOLLUS-USERKEY에 채널 사용자키(Custom Key)를 담아
+            // Kollus가 어느 채널의 보안키로 응답 JWT 서명을 검증할지 식별하게 한다.
             Response.Headers.Add("X-KOLLUS-USERKEY", _customKey);
+            // 응답 본문은 JSON이 아닌, 채널 보안키로 서명한 JWT 문자열 그대로(text/plain)
             return Content(_jwtService.GenerateJwtFromPayload(payload), "text/plain");
         }
 
         private string GetNextMck(string currentMck)
         {
-            if (NextEpisodeMcks.Length == 0) return null;
-            var idx = Array.IndexOf(NextEpisodeMcks, currentMck);
-            if (idx < 0 || idx >= NextEpisodeMcks.Length - 1) return null;
-            return NextEpisodeMcks[idx + 1];
+            if (_nextEpisodeMcks.Length == 0) return null;
+            var idx = Array.IndexOf(_nextEpisodeMcks, currentMck);
+            if (idx < 0 || idx >= _nextEpisodeMcks.Length - 1) return null;
+            return _nextEpisodeMcks[idx + 1];
+        }
+
+        // "MCK1, MCK2" 형태의 콤마 구분 설정값을 공백 제거 후 배열로 변환 — 설정이 비어 있으면 빈 배열
+        private static string[] ParseMckList(string commaSeparated)
+        {
+            if (string.IsNullOrWhiteSpace(commaSeparated)) return new string[0];
+            return commaSeparated
+                .Split(',')
+                .Select(mck => mck.Trim())
+                .Where(mck => mck.Length > 0)
+                .ToArray();
         }
     }
 }
