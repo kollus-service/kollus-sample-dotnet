@@ -24,7 +24,7 @@ namespace KollusSampleDotnet.Controllers
                 customKey:     ConfigurationManager.AppSettings["Kollus.MultiDrm.CustomKey"],
                 doveRunnerSiteKey:   ConfigurationManager.AppSettings["Kollus.DoveRunner.SiteKey"],
                 doveRunnerAccessKey: ConfigurationManager.AppSettings["Kollus.DoveRunner.AccessKey"],
-                doveRunnerSiteId: ConfigurationManager.AppSettings["Kollus.MultiDrm.SiteId"]
+                doveRunnerSiteId: ConfigurationManager.AppSettings["Kollus.DoveRunner.SiteId"]
             );
         }
 
@@ -33,7 +33,7 @@ namespace KollusSampleDotnet.Controllers
         public ActionResult Index()
         {
             ViewBag.DefaultMck          = ConfigurationManager.AppSettings["Kollus.MultiDrm.MediaContentKey"] ?? "";
-            ViewBag.DefaultSiteId       = ConfigurationManager.AppSettings["Kollus.MultiDrm.SiteId"] ?? "";
+            ViewBag.DefaultSiteId       = ConfigurationManager.AppSettings["Kollus.DoveRunner.SiteId"] ?? "";
             ViewBag.DefaultUploadFileKey = ConfigurationManager.AppSettings["Kollus.MultiDrm.UploadFileKey"] ?? "";
             return View();
         }
@@ -65,12 +65,12 @@ namespace KollusSampleDotnet.Controllers
             try
             {
                 var cuid  = "sample_user";
-                var token = _multiDrmService.CreateInkaPayload(cuid, uploadFileKey, streamingType);
+                var token = _multiDrmService.CreateLicenseToken(cuid, uploadFileKey, streamingType);
                 return Json(new { success = true, license_token = token });
             }
             catch (Exception ex)
             {
-                // 라이선스 토큰 생성 실패: uploadFileKey가 유효하지 않거나 InkaDRM 설정 오류 가능성
+                // 라이선스 토큰 생성 실패: uploadFileKey가 유효하지 않거나 DoveRunner 설정 오류 가능성
                 System.Diagnostics.Debug.WriteLine($"[MultiDrm/GenerateLicenseToken] {ex.Message}");
                 return Json(new { success = false, message = ex.Message });
             }

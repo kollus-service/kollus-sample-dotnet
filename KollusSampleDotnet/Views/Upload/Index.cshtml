@@ -1,4 +1,4 @@
-@* File Upload — 서버 프록시(/api/upload/create-url)로 Kollus 업로드 URL을 발급받은 뒤,
+﻿@* File Upload — 서버 프록시(/api/upload/create-url)로 Kollus 업로드 URL을 발급받은 뒤,
    브라우저가 그 URL로 파일을 직접 multipart POST하며 진행률을 표시하는 페이지 *@
 @{
     ViewBag.Title = "Kollus File Upload";
@@ -7,10 +7,6 @@
 <div style="max-width:800px; margin:50px auto;">
     <h2>Kollus File Upload</h2>
 
-    <div class="form-group">
-        <label>API Token</label>
-        <input id="apiToken" type="text" class="form-control" value="@ViewBag.DefaultApiToken" />
-    </div>
     <div class="form-group">
         <label>Title</label>
         <input id="title" type="text" class="form-control" placeholder="Video title" />
@@ -101,12 +97,11 @@ async function handleUploadClick() {
     try {
         // 1) 서버 프록시 /api/upload/create-url → Kollus Upload API create-url 호출.
         //    필드명은 서버 UploadCreateUrlRequest 프로퍼티와 일치하며 ExpireTime은 Kollus 폼 필드 규격대로 문자열로 보낸다.
-        //    AccessToken을 비우면 서버가 Web.config의 토큰을 사용한다(토큰을 브라우저에 노출하지 않으려면 이 방식 권장)
+        //    Kollus API 액세스 토큰은 브라우저에서 보내지 않으며 서버가 Web.config의 Kollus.ApiAccessToken만 사용한다
         const res = await fetch('/api/upload/create-url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                AccessToken:        document.getElementById('apiToken').value,
                 ExpireTime:         String(DEFAULT_UPLOAD_EXPIRE_TIME),
                 Title:              title,
                 CategoryKey:        document.getElementById('categoryKey').value,

@@ -15,13 +15,13 @@ namespace KollusSampleDotnet.Controllers
     [RoutePrefix("jwt")]
     public class JwtController : Controller
     {
-        private readonly string _defaultSecretKey;
+        private readonly string _defaultSecurityKey;
         private readonly string _defaultCustomKey;
 
         /// <summary>Web.config의 채널 보안키/사용자키를 기본값으로 읽어 둡니다. 요청에 키가 없으면 이 값을 사용합니다.</summary>
         public JwtController()
         {
-            _defaultSecretKey = ConfigurationManager.AppSettings["Kollus.SecurityKey"];
+            _defaultSecurityKey = ConfigurationManager.AppSettings["Kollus.SecurityKey"];
             _defaultCustomKey = ConfigurationManager.AppSettings["Kollus.CustomKey"];
         }
 
@@ -29,7 +29,7 @@ namespace KollusSampleDotnet.Controllers
         /// <param name="mck">재생할 미디어 콘텐츠 키 (필수)</param>
         /// <param name="cuid">시청자 식별자(client_user_id)</param>
         /// <param name="expt">토큰 만료 시간(분)</param>
-        /// <param name="secretKey">채널 보안키 — 생략 시 Web.config 값 사용</param>
+        /// <param name="securityKey">채널 보안키 — 생략 시 Web.config 값 사용</param>
         /// <param name="customKey">채널 사용자키 — 생략 시 Web.config 값 사용</param>
         /// <param name="seek">탐색(스크러빙) 허용 여부 — null이면 허용</param>
         /// <param name="intro">본편 앞에 재생할 인트로 MCK</param>
@@ -40,14 +40,14 @@ namespace KollusSampleDotnet.Controllers
         [HttpGet]
         public ActionResult Create(
             string mck, string cuid = "sample_user", int expt = KollusDefaults.DefaultExpireMinutes,
-            string secretKey = null, string customKey = null,
+            string securityKey = null, string customKey = null,
             bool? seek = null, string intro = null, string outro = null,
             bool nextEpisode = false)
         {
             return GenerateToken(new JwtCreateRequest
             {
                 Mck = mck, Cuid = cuid, Expt = expt,
-                SecretKey = secretKey, CustomKey = customKey,
+                SecurityKey = securityKey, CustomKey = customKey,
                 Seek = seek, Intro = intro, Outro = outro,
                 NextEpisode = nextEpisode
             });
@@ -70,7 +70,7 @@ namespace KollusSampleDotnet.Controllers
 
             try
             {
-                var sKey = string.IsNullOrEmpty(req.SecretKey) ? _defaultSecretKey : req.SecretKey;
+                var sKey = string.IsNullOrEmpty(req.SecurityKey) ? _defaultSecurityKey : req.SecurityKey;
                 var cKey = string.IsNullOrEmpty(req.CustomKey) ? _defaultCustomKey : req.CustomKey;
 
                 var options = new KollusJwtOptions
@@ -128,7 +128,7 @@ namespace KollusSampleDotnet.Controllers
         public string Mck             { get; set; }
         public string Cuid            { get; set; } = "sample_user";
         public int    Expt            { get; set; } = KollusDefaults.DefaultExpireMinutes;
-        public string SecretKey       { get; set; }
+        public string SecurityKey     { get; set; }
         public string CustomKey       { get; set; }
         public bool?  Seek            { get; set; }
         public int    SeekableEnd     { get; set; } = 0;

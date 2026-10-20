@@ -8,7 +8,7 @@ using KollusSampleDotnet.Models;
 
 namespace KollusSampleDotnet.Services
 {
-    /// <summary>DoveRunner(Pallycon) 기반 멀티 DRM 재생 URL 및 라이선스 토큰을 생성하는 서비스</summary>
+    /// <summary>DoveRunner 기반 멀티 DRM 재생 URL 및 라이선스 토큰을 생성하는 서비스</summary>
     public class KollusMultiDrmService
     {
         private readonly string _securityKey;
@@ -41,7 +41,7 @@ namespace KollusSampleDotnet.Services
             _doveRunnerSiteId    = doveRunnerSiteId;
         }
 
-        /// <summary>멀티 DRM(Inka/DoveRunner) 라이선스 정책이 포함된 플레이어 재생 URL을 생성합니다.</summary>
+        /// <summary>멀티 DRM(DoveRunner) 라이선스 정책이 포함된 플레이어 재생 URL을 생성합니다.</summary>
         /// <param name="options">재생 옵션(콘텐츠 키, 사용자 ID, 스트리밍 타입 등)</param>
         /// <returns>DRM 정책이 담긴 JWT를 포함한 플레이어 재생 URL</returns>
         /// <exception cref="ArgumentNullException">DoveRunner Site Key 또는 Kollus 보안키가 null이면 암호화/서명 단계에서 발생</exception>
@@ -49,12 +49,12 @@ namespace KollusSampleDotnet.Services
         public string GenerateMultiDrmPlayUrl(MultiDrmJwtOptions options)
         {
             // 라이선스 토큰은 클라이언트 입력을 받지 않고 서버 설정(DoveRunner 키)으로 항상 새로 생성
-            var licenseToken = CreateInkaPayload(options.ClientUserId, options.UploadFileKey, options.StreamingType);
+            var licenseToken = CreateLicenseToken(options.ClientUserId, options.UploadFileKey, options.StreamingType);
 
             // drm_policy: Kollus 플레이어가 DRM 라이선스를 요청할 때 사용하는 정책 (mc 항목 단위)
             var drmPolicy = new Dictionary<string, object>
             {
-                // kind: DRM 종류 — "inka" = Inka Entworks(DoveRunner/PallyCon) 멀티 DRM
+                // kind: DRM 종류 — "inka" 는 Kollus 플레이어 규격값(DoveRunner 멀티 DRM)으로 그대로 사용
                 { "kind",           "inka" },
                 // streaming_type: 재생 스트림 포맷 — "dash"(Widevine/PlayReady) 또는 "hls"(FairPlay)
                 { "streaming_type", options.StreamingType },
@@ -94,14 +94,14 @@ namespace KollusSampleDotnet.Services
             return $"https://v.kr.kollus.com/s?jwt={jwt}&custom_key={_customKey}";
         }
 
-        /// <summary>DoveRunner 라이선스 서버에 전달할 Inka 라이선스 토큰(암호화된 정책 페이로드)을 생성합니다.</summary>
+        /// <summary>DoveRunner 라이선스 서버에 전달할 라이선스 토큰(암호화된 정책 페이로드)을 생성합니다.</summary>
         /// <param name="userId">재생을 요청하는 사용자 ID</param>
         /// <param name="cid">콘텐츠 식별자(업로드 파일 키)</param>
         /// <param name="streamingType">스트리밍 타입 ("hls"면 FairPlay, 그 외 Widevine)</param>
         /// <returns>Base64로 인코딩된 라이선스 토큰</returns>
         /// <exception cref="ArgumentNullException">DoveRunner Site Key가 null이면 AES 키 생성 단계에서 발생</exception>
         /// <exception cref="CryptographicException">DoveRunner Site Key 길이가 AES 키 규격(16/24/32바이트)에 맞지 않으면 발생</exception>
-        public string CreateInkaPayload(string userId, string cid, string streamingType)
+        public string CreateLicenseToken(string userId, string cid, string streamingType)
         {
             var now       = DateTime.UtcNow;
             var timestamp = now.ToString("yyyy-MM-ddTHH:mm:ssZ");

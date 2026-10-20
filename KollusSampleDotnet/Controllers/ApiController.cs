@@ -19,13 +19,13 @@ namespace KollusSampleDotnet.Controllers
     public class ApiController : Controller
     {
         private const string KOLLUS_API_BASE = "https://c-api-kr.kollus.com/api";
-        private readonly string _defaultToken;
+        private readonly string _apiToken;
         private readonly string _defaultCategoryKey;
 
-        /// <summary>Web.config의 Upload API 액세스 토큰과 카테고리 키를 기본값으로 읽어 둡니다. 요청에 값이 없으면 이 값을 사용합니다.</summary>
+        /// <summary>Web.config의 Upload API 액세스 토큰과 카테고리 키를 읽어 둡니다. 액세스 토큰은 요청으로 받지 않고 항상 이 값을 사용하며, 카테고리 키는 요청에 값이 없을 때만 사용합니다.</summary>
         public ApiController()
         {
-            _defaultToken       = ConfigurationManager.AppSettings["Kollus.ApiAccessToken"];
+            _apiToken           = ConfigurationManager.AppSettings["Kollus.ApiAccessToken"];
             _defaultCategoryKey = ConfigurationManager.AppSettings["Kollus.CategoryKey"];
         }
 
@@ -33,17 +33,17 @@ namespace KollusSampleDotnet.Controllers
         /// Kollus Upload API(create-url)를 호출해 1회용 업로드 URL과 upload_file_key를 발급받고, 응답 JSON을 그대로 전달합니다.
         /// 브라우저에서 액세스 토큰을 노출하지 않고 업로드하도록 서버가 대신 호출하는 프록시입니다.
         /// </summary>
-        /// <param name="req">업로드 생성 요청 (JSON 바디). Title과 ExpireTime은 필수</param>
+        /// <param name="req">업로드 생성 요청 (JSON 바디). Title은 필수, ExpireTime은 60~21600초 범위로 보정</param>
         /// <returns>Kollus 응답 JSON 원문 — 실패 시 JSON { status: "fail", error }</returns>
         [Route("upload/create-url")]
         [HttpPost]
         public ActionResult CreateUrl(UploadCreateUrlRequest req)
         {
-            if (req == null || string.IsNullOrEmpty(req.Title) || string.IsNullOrEmpty(req.ExpireTime))
-                return Json(new { status = "fail", error = "Missing required: expire_time, title" });
+            if (req == null || string.IsNullOrEmpty(req.Title))
+                return Json(new { status = "fail", error = "Missing required: title" });
 
-            var token    = string.IsNullOrEmpty(req.AccessToken)  ? _defaultToken       : req.AccessToken;
-            var category = string.IsNullOrEmpty(req.CategoryKey)  ? _defaultCategoryKey : req.CategoryKey;
+            var category   = string.IsNullOrEmpty(req.CategoryKey)  ? _defaultCategoryKey : req.CategoryKey;
+            var expireTime = ResolveExpireTime(req.ExpireTime);
 
             try
             {
@@ -55,14 +55,14 @@ namespace KollusSampleDotnet.Controllers
                 //   is_audio_upload      — 1=오디오 전용 콘텐츠 / 0=비디오 콘텐츠
                 var form = new NameValueCollection
                 {
-                    { "expire_time",          req.ExpireTime },
+                    { "expire_time",          expireTime.ToString() },
                     { "title",                req.Title },
                     { "category_key",         category ?? "" },
                     { "is_encryption_upload", req.IsEncryptionUpload },
                     { "is_audio_upload",      req.IsAudioUpload }
                 };
 
-                var url      = $"{KOLLUS_API_BASE}/upload/create-url?access_token={token}";
+                var url      = $"{KOLLUS_API_BASE}/upload/create-url?access_token={Uri.EscapeDataString(_apiToken ?? "")}";
                 // 응답 JSON: { status, data: { upload_url, upload_file_key, progress_url } } — 클라이언트가 upload_url로 파일을 직접 POST
                 var response = PostForm(url, form);
 
@@ -84,12 +84,12 @@ namespace KollusSampleDotnet.Controllers
         [HttpGet]
         public ActionResult Progress(string uploadFileKey)
         {
-            var token = Request.QueryString["access_token"] ?? _defaultToken;
             try
             {
                 // Kollus Upload API: GET /upload/progress/{upload_file_key}?access_token={token}
                 //   업로드 파일 키로 해당 콘텐츠의 업로드·인코딩 진행 상태를 조회
-                var url      = $"{KOLLUS_API_BASE}/upload/progress/{uploadFileKey}?access_token={token}";
+                var url      = $"{KOLLUS_API_BASE}/upload/progress/{Uri.EscapeDataString(uploadFileKey ?? "")}"
+                             + $"?access_token={Uri.EscapeDataString(_apiToken ?? "")}";
                 var response = GetJson(url);
                 return Content(response, "application/json");
             }
@@ -98,6 +98,16 @@ namespace KollusSampleDotnet.Controllers
                 // 조회 실패도 create-url과 동일하게 { status: "fail" } JSON으로 반환해 클라이언트 처리 방식을 통일
                 return Json(new { status = "fail", error = ex.Message }, JsonRequestBehavior.AllowGet);
             }
+        }
+
+        /// <summary>expire_time 문자열을 정수로 변환하고 허용 범위(UploadUrlExpireMinSeconds~UploadUrlExpireMaxSeconds)로 보정합니다.</summary>
+        /// <param name="value">요청의 ExpireTime 값</param>
+        /// <returns>보정된 유효 시간(초) — 파싱 실패 시 KollusDefaults.UploadUrlExpireSeconds</returns>
+        private static int ResolveExpireTime(string value)
+        {
+            if (!int.TryParse(value, out var seconds))
+                return KollusDefaults.UploadUrlExpireSeconds;
+            return Math.Min(Math.Max(seconds, KollusDefaults.UploadUrlExpireMinSeconds), KollusDefaults.UploadUrlExpireMaxSeconds);
         }
 
         private string PostForm(string url, NameValueCollection data)
@@ -142,7 +152,6 @@ namespace KollusSampleDotnet.Controllers
     /// </summary>
     public class UploadCreateUrlRequest
     {
-        public string AccessToken        { get; set; }
         public string ExpireTime         { get; set; } = KollusDefaults.UploadUrlExpireSeconds.ToString();
         public string Title              { get; set; }
         public string CategoryKey        { get; set; }

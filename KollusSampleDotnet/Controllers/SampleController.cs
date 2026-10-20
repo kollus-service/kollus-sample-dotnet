@@ -17,7 +17,7 @@ namespace KollusSampleDotnet.Controllers
         /// <returns>Views/Sample/Index.cshtml</returns>
         public ActionResult Index()
         {
-            ViewBag.DefaultSecretKey = ConfigurationManager.AppSettings["Kollus.SecurityKey"];
+            ViewBag.DefaultSecurityKey = ConfigurationManager.AppSettings["Kollus.SecurityKey"];
             ViewBag.DefaultCustomKey = ConfigurationManager.AppSettings["Kollus.CustomKey"];
             ViewBag.DefaultMck       = ConfigurationManager.AppSettings["Kollus.MediaContentKey"];
 

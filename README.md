@@ -46,14 +46,14 @@ Kollus API를 연동하여 플레이어 토큰(JWT)을 발급하고, 재생/DRM/
    | `Kollus.CustomKey` | 채널 사용자키 (URL 파라미터) |
    | `Kollus.MediaContentKey` | 기본 미디어 컨텐츠키 (MCK) |
    | `Kollus.NextEpisodeMcks` | 다음 회차 MCK 목록 — 콤마 구분, 재생 순서대로 (`/callback/next-episode`가 현재 MCK의 다음 항목을 반환) |
-   | `Kollus.ApiAccessToken` | Kollus Upload API 액세스 토큰 |
+   | `Kollus.ApiAccessToken` | Kollus Upload API 액세스 토큰 (서버에서만 사용, 업로드 화면에서 입력받지 않음) |
    | `Kollus.CategoryKey` | 업로드 대상 카테고리 키 |
    | `Kollus.DoveRunner.SiteKey` | DoveRunner 사이트 키 (라이선스 정책 AES 암호화) |
    | `Kollus.DoveRunner.AccessKey` | DoveRunner 액세스 키 (라이선스 토큰 해시) |
+   | `Kollus.DoveRunner.SiteId` | DoveRunner 사이트 ID (FairPlay 인증서 URL·토큰 `site_id`) |
    | `Kollus.MultiDrm.SecurityKey` | Multi DRM 채널 보안키 |
    | `Kollus.MultiDrm.CustomKey` | Multi DRM 채널 사용자키 |
    | `Kollus.MultiDrm.MediaContentKey` | Multi DRM 기본 MCK |
-   | `Kollus.MultiDrm.SiteId` | DoveRunner 사이트 ID (FairPlay 인증서 URL·토큰 `site_id`) |
    | `Kollus.MultiDrm.UploadFileKey` | Multi DRM 기본 업로드 파일키 (라이선스 토큰 `cid`) |
 
    > `Web.config`는 `.gitignore`에 포함되어 있어 버전 관리에서 제외됩니다.
@@ -189,6 +189,23 @@ POST /MultiDrm/GenerateLicenseToken   (application/x-www-form-urlencoded)
      uploadFileKey=...&streamingType=dash|hls
   ← { success, license_token }
 ```
+
+---
+
+### 파일 업로드
+
+서버(`ApiController`)가 Kollus Upload API를 대신 호출합니다. 액세스 토큰은 요청으로 받지 않고 서버 `Web.config`의 `Kollus.ApiAccessToken`만 사용하므로, 업로드 화면에는 토큰 입력란이 없습니다.
+
+```
+POST /api/upload/create-url   (application/json)
+     { Title, ExpireTime, CategoryKey, IsEncryptionUpload, IsAudioUpload }
+  ← Kollus 응답 { status, data: { upload_url, upload_file_key, progress_url } }
+
+GET  /api/upload/progress/{uploadFileKey}
+  ← Kollus 응답 (업로드·인코딩 진행 상태)
+```
+
+`Title`은 필수입니다. `ExpireTime`(초)은 60~21600 범위로 보정되며 생략·파싱 실패 시 600초(`KollusDefaults.UploadUrlExpireSeconds`, Kollus 문서 기본값)를 사용합니다. `CategoryKey`를 비우면 `Kollus.CategoryKey`를 사용합니다. `access_token`과 `uploadFileKey`는 URL 인코딩해 Kollus API에 전달합니다. 브라우저는 발급된 `upload_url`로 파일을 직접 multipart POST합니다.
 
 ---
 

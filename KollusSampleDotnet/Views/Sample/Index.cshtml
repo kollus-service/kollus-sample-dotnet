@@ -1,4 +1,4 @@
-@* Player Sample — Web.config 채널 키와 화면 입력값(만료 시간·seek·재생 구간·워터마크 등)으로 /jwt/create를 호출해
+﻿@* Player Sample — Web.config 채널 키와 화면 입력값(만료 시간·seek·재생 구간·워터마크 등)으로 /jwt/create를 호출해
    플레이어 JWT를 발급하고, 웹 플레이어(iframe)와 모바일 Kollus 앱(kollus:// / intent:// 스킴)으로 재생을 확인하는 페이지 *@
 @{
     ViewBag.Title = "Kollus Player Sample";
@@ -12,8 +12,8 @@
         <div class="panel-heading"><strong>Basic Settings</strong></div>
         <div class="panel-body">
             <div class="form-group">
-                <label>Secret Key</label>
-                <input id="secretKey" type="text" class="form-control" value="@ViewBag.DefaultSecretKey" />
+                <label>Security Key</label>
+                <input id="securityKey" type="text" class="form-control" value="@ViewBag.DefaultSecurityKey" />
             </div>
             <div class="form-group">
                 <label>Custom Key</label>
@@ -167,7 +167,9 @@
                     <iframe id="kollusIframe" src="about:blank"
                         style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
                         allowfullscreen
-                        allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;">
+                        webkitallowfullscreen
+                        mozallowfullscreen
+                        allow="encrypted-media; local-network-access">
                     </iframe>
                 </div>
             </div>
@@ -263,13 +265,13 @@ async function handleJwtIssue() {
     btn.disabled = true;
 
     // /jwt/create 요청 바디 — 필드명은 서버 JwtCreateRequest 프로퍼티와 일치해야 한다.
-    // Expt는 분 단위(서버가 초로 환산해 JWT expt에 넣음), Secret/Custom Key가 비면 서버가 Web.config 값을 사용.
+    // Expt는 분 단위(서버가 초로 환산해 JWT expt에 넣음), Security/Custom Key가 비면 서버가 Web.config 값을 사용.
     // seek·intro/outro·play section·watermark 등은 JWT 페이로드의 플레이어 옵션으로 들어간다
     const body = {
         Mck:              mck,
         Cuid:             document.getElementById('cuid').value.trim() || DEFAULT_CUID,
         Expt:             parseInt(document.getElementById('expt').value) || DEFAULT_EXPIRE_MINUTES,
-        SecretKey:        document.getElementById('secretKey').value.trim(),
+        SecurityKey:      document.getElementById('securityKey').value.trim(),
         CustomKey:        document.getElementById('customKey').value.trim(),
         Seek:             document.getElementById('seekEnabled').checked,
         SeekableEnd:      parseInt(document.getElementById('seekableEnd').value) || 0,

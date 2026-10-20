@@ -1,4 +1,4 @@
-@* Player Demo — DemoController가 Web.config의 기본 MCK로 발급한 플레이어 URL(ViewBag.PlayerUrl)을
+﻿@* Player Demo — DemoController가 Web.config의 기본 MCK로 발급한 플레이어 URL(ViewBag.PlayerUrl)을
    iframe에 바로 띄워 재생을 확인하는 페이지 *@
 @{
     ViewBag.Title = "Kollus Player Demo";
@@ -12,7 +12,9 @@
             src="@ViewBag.PlayerUrl"
             style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
             allowfullscreen
-            allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;">
+            webkitallowfullscreen
+            mozallowfullscreen
+            allow="encrypted-media; local-network-access">
         </iframe>
     </div>
 </div>

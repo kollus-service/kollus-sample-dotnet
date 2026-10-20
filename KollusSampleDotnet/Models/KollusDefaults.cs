@@ -17,8 +17,14 @@ namespace KollusSampleDotnet.Models
         /// <summary>Player Demo 페이지에서 발급하는 JWT 만료 시간(초) — 1시간</summary>
         public const int DemoJwtExpireSeconds = 3600;
 
-        /// <summary>Kollus Upload API create-url의 expire_time 기본값(초) — 발급된 업로드 URL 유효 시간 1시간</summary>
-        public const int UploadUrlExpireSeconds = 3600;
+        /// <summary>Kollus Upload API create-url의 expire_time 기본값(초) — 발급된 업로드 URL 유효 시간 10분 (Kollus 문서 기본값)</summary>
+        public const int UploadUrlExpireSeconds = 600;
+
+        /// <summary>Kollus Upload API create-url의 expire_time 허용 최솟값(초) — 범위 밖 값은 경계값으로 보정</summary>
+        public const int UploadUrlExpireMinSeconds = 60;
+
+        /// <summary>Kollus Upload API create-url의 expire_time 허용 최댓값(초, 6시간)</summary>
+        public const int UploadUrlExpireMaxSeconds = 21600;
 
         /// <summary>/jwt/create의 expt(만료 시간, 분) 기본값</summary>
         public const int DefaultExpireMinutes = 3;

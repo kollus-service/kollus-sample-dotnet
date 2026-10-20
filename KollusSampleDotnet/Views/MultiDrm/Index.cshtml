@@ -1,4 +1,4 @@
-@* Player MultiDRM — 서버가 Web.config의 Multi DRM 채널 키·DoveRunner 키로 라이선스 토큰과 drm_policy JWT를 생성해
+﻿@* Player MultiDRM — 서버가 Web.config의 Multi DRM 채널 키·DoveRunner 키로 라이선스 토큰과 drm_policy JWT를 생성해
    Widevine/PlayReady(DASH) 또는 FairPlay(HLS) 보호 콘텐츠를 웹 플레이어로 재생하는 페이지 *@
 @{
     ViewBag.Title = "Multi DRM Sample";
@@ -90,7 +90,9 @@
                     <iframe id="drmIframe" src="about:blank"
                         style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
                         allowfullscreen
-                        allow="local-network-access; loopback-network; accelerometer; autoplay; encrypted-media; fullscreen; picture-in-picture;">
+                        webkitallowfullscreen
+                        mozallowfullscreen
+                        allow="encrypted-media; local-network-access">
                     </iframe>
                 </div>
             </div>
